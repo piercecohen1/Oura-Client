@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -88,6 +89,9 @@ func processResponse(response []byte) {
 }
 
 func main() {
+	// Get environment variables
+	token := os.Getenv("OURA_TOKEN")
+
 	// Set the request URL
 	url := "https://api.ouraring.com/v2/usercollection/daily_sleep"
 
@@ -97,17 +101,15 @@ func main() {
 		"end_date":   "2022-12-10",
 	}
 
-	// Specify the Authorization token, in the request header
-	headers := map[string]string{
-		"Authorization": "Bearer <token>",
-	}
-
 	// Create a new http request
 	req, err := http.NewRequest("GET", url, nil)
 	// If there is an error, panic
 	if err != nil {
 		panic(err)
 	}
+
+	// Set the request headers
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Create a new URL query
 	q := req.URL.Query()
@@ -117,11 +119,6 @@ func main() {
 		q.Add(key, value)
 	}
 	req.URL.RawQuery = q.Encode()
-
-	// For each key, value pair in the headers map, add the key, value pair to the request header
-	for key, value := range headers {
-		req.Header.Add(key, value)
-	}
 
 	// Create a new http client
 	client := http.Client{}
