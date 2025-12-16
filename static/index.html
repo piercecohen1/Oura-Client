@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oura Sleep Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent-primary: #7c3aed;
+            --accent-secondary: #a78bfa;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-orange: #f59e0b;
+            --accent-pink: #ec4899;
+            --accent-cyan: #06b6d4;
+            --border-color: #2d2d44;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-icon {
+            font-size: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Date Picker Section */
+        .date-picker-section {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .date-picker-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .date-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .date-input-group label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .date-input-group input {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 1rem;
+            min-width: 180px;
+        }
+
+        .date-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
+
+        .quick-ranges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .quick-range-btn {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .quick-range-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .quick-range-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .fetch-btn {
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            border: none;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .fetch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .fetch-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Stats Overview */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value.excellent { color: var(--accent-green); }
+        .stat-value.good { color: var(--accent-blue); }
+        .stat-value.fair { color: var(--accent-orange); }
+        .stat-value.poor { color: var(--accent-pink); }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.positive { color: var(--accent-green); }
+        .stat-change.negative { color: var(--accent-pink); }
+
+        /* Charts Section */
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            .charts-section {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Sleep Data Table */
+        .data-section {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sleep-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .sleep-card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .sleep-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow);
+        }
+
+        .sleep-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sleep-date {
+            font-weight: 600;
+        }
+
+        .sleep-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+        }
+
+        .sleep-score.excellent { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .sleep-score.good { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .sleep-score.fair { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .sleep-score.poor { background: rgba(236, 72, 153, 0.2); color: var(--accent-pink); }
+
+        .contributors-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .contributor {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .contributor-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .contributor-bar {
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .contributor-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .contributor-fill.deep { background: var(--accent-primary); }
+        .contributor-fill.efficiency { background: var(--accent-green); }
+        .contributor-fill.latency { background: var(--accent-cyan); }
+        .contributor-fill.rem { background: var(--accent-pink); }
+        .contributor-fill.restfulness { background: var(--accent-orange); }
+        .contributor-fill.timing { background: var(--accent-blue); }
+        .contributor-fill.total { background: var(--accent-secondary); }
+
+        .contributor-value {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(236, 72, 153, 0.1);
+            border: 1px solid var(--accent-pink);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--accent-pink);
+        }
+
+        .error-message h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--accent-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .date-picker-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .date-input-group input {
+                width: 100%;
+            }
+
+            .quick-ranges {
+                justify-content: center;
+            }
+
+            .sleep-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .contributors-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="logo-icon">&#x1F319;</span>
+                <h1>Oura Sleep Dashboard</h1>
+            </div>
+            <p class="subtitle">Track and analyze your sleep patterns</p>
+        </header>
+
+        <section class="date-picker-section">
+            <div class="date-picker-container">
+                <div class="date-input-group">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="date-input-group">
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate">
+                </div>
+                <div class="quick-ranges">
+                    <button class="quick-range-btn" data-days="7">7 Days</button>
+                    <button class="quick-range-btn active" data-days="30">30 Days</button>
+                    <button class="quick-range-btn" data-days="90">90 Days</button>
+                </div>
+                <button class="fetch-btn" id="fetchBtn">
+                    <span id="fetchBtnText">Load Data</span>
+                </button>
+            </div>
+        </section>
+
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading your sleep data...</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with Go & Chart.js | Data from <a href="https://ouraring.com" target="_blank">Oura Ring</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // State
+        let sleepData = [];
+        let scoreChart = null;
+        let contributorsChart = null;
+
+        // DOM Elements
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const fetchBtnText = document.getElementById('fetchBtnText');
+        const contentDiv = document.getElementById('content');
+        const quickRangeBtns = document.querySelectorAll('.quick-range-btn');
+
+        // Initialize
+        function init() {
+            setDefaultDates(30);
+            setupEventListeners();
+            fetchSleepData();
+        }
+
+        function setDefaultDates(days) {
+            const today = new Date();
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - days);
+
+            startDateInput.value = formatDate(startDate);
+            endDateInput.value = formatDate(today);
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function setupEventListeners() {
+            fetchBtn.addEventListener('click', fetchSleepData);
+
+            quickRangeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const days = parseInt(btn.dataset.days);
+                    setDefaultDates(days);
+
+                    quickRangeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    fetchSleepData();
+                });
+            });
+
+            // Clear active quick range when custom dates are selected
+            startDateInput.addEventListener('change', () => {
+                quickRangeBtns.forEach(b => b.classList.remove('active'));
+            });
+            endDateInput.addEventListener('change', () => {
+                quickRangeBtns.forEach(b => b.classList.remove('active'));
+            });
+        }
+
+        async function fetchSleepData() {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+
+            if (!startDate || !endDate) {
+                showError('Please select both start and end dates');
+                return;
+            }
+
+            showLoading();
+            fetchBtn.disabled = true;
+            fetchBtnText.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`/api/sleep?start_date=${startDate}&end_date=${endDate}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to fetch data');
+                }
+
+                sleepData = result.data || [];
+                renderDashboard();
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtnText.textContent = 'Load Data';
+            }
+        }
+
+        function showLoading() {
+            contentDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading your sleep data...</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            contentDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>Error</h3>
+                    <p>${escapeHtml(message)}</p>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getScoreClass(score) {
+            if (score >= 85) return 'excellent';
+            if (score >= 70) return 'good';
+            if (score >= 50) return 'fair';
+            return 'poor';
+        }
+
+        function renderDashboard() {
+            if (sleepData.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#x1F634;</div>
+                        <h3>No Sleep Data Found</h3>
+                        <p>Try selecting a different date range</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calculate statistics
+            const scores = sleepData.map(d => d.score);
+            const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
+            const daysTracked = sleepData.length;
+
+            // Calculate average contributors
+            const avgContributors = {
+                deep_sleep: Math.round(sleepData.reduce((a, d) => a + d.contributors.deep_sleep, 0) / sleepData.length),
+                efficiency: Math.round(sleepData.reduce((a, d) => a + d.contributors.efficiency, 0) / sleepData.length),
+                latency: Math.round(sleepData.reduce((a, d) => a + d.contributors.latency, 0) / sleepData.length),
+                rem_sleep: Math.round(sleepData.reduce((a, d) => a + d.contributors.rem_sleep, 0) / sleepData.length),
+                restfulness: Math.round(sleepData.reduce((a, d) => a + d.contributors.restfulness, 0) / sleepData.length),
+                timing: Math.round(sleepData.reduce((a, d) => a + d.contributors.timing, 0) / sleepData.length),
+                total_sleep: Math.round(sleepData.reduce((a, d) => a + d.contributors.total_sleep, 0) / sleepData.length)
+            };
+
+            contentDiv.innerHTML = `
+                <section class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(avgScore)}">${avgScore}</div>
+                        <div class="stat-label">Average Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value excellent">${maxScore}</div>
+                        <div class="stat-label">Best Night</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(minScore)}">${minScore}</div>
+                        <div class="stat-label">Lowest Night</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value good">${daysTracked}</div>
+                        <div class="stat-label">Days Tracked</div>
+                    </div>
+                </section>
+
+                <section class="charts-section">
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4C8; Sleep Score Trend</h3>
+                        <div class="chart-container">
+                            <canvas id="scoreChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4CA; Average Contributors</h3>
+                        <div class="chart-container">
+                            <canvas id="contributorsChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="data-section">
+                    <h3 class="section-title">&#x1F4C5; Daily Sleep Data</h3>
+                    <div class="sleep-cards" id="sleepCards"></div>
+                </section>
+            `;
+
+            renderScoreChart();
+            renderContributorsChart(avgContributors);
+            renderSleepCards();
+        }
+
+        function renderScoreChart() {
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+
+            // Sort data by date
+            const sortedData = [...sleepData].sort((a, b) => new Date(a.day) - new Date(b.day));
+
+            const labels = sortedData.map(d => {
+                const date = new Date(d.day);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+
+            const scores = sortedData.map(d => d.score);
+            const colors = scores.map(score => {
+                if (score >= 85) return 'rgba(16, 185, 129, 0.8)';
+                if (score >= 70) return 'rgba(59, 130, 246, 0.8)';
+                if (score >= 50) return 'rgba(245, 158, 11, 0.8)';
+                return 'rgba(236, 72, 153, 0.8)';
+            });
+
+            if (scoreChart) {
+                scoreChart.destroy();
+            }
+
+            scoreChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Sleep Score',
+                        data: scores,
+                        borderColor: 'rgba(124, 58, 237, 1)',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: colors,
+                        pointBorderColor: colors,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 26, 46, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#a0a0b0',
+                            borderColor: 'rgba(124, 58, 237, 0.5)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Score: ${context.raw}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(45, 45, 68, 0.5)'
+                            },
+                            ticks: {
+                                color: '#a0a0b0'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(45, 45, 68, 0.5)'
+                            },
+                            ticks: {
+                                color: '#a0a0b0',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderContributorsChart(avgContributors) {
+            const ctx = document.getElementById('contributorsChart').getContext('2d');
+
+            if (contributorsChart) {
+                contributorsChart.destroy();
+            }
+
+            contributorsChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Deep Sleep', 'Efficiency', 'Latency', 'REM Sleep', 'Restfulness', 'Timing', 'Total Sleep'],
+                    datasets: [{
+                        label: 'Average',
+                        data: [
+                            avgContributors.deep_sleep,
+                            avgContributors.efficiency,
+                            avgContributors.latency,
+                            avgContributors.rem_sleep,
+                            avgContributors.restfulness,
+                            avgContributors.timing,
+                            avgContributors.total_sleep
+                        ],
+                        backgroundColor: 'rgba(124, 58, 237, 0.2)',
+                        borderColor: 'rgba(124, 58, 237, 1)',
+                        pointBackgroundColor: 'rgba(124, 58, 237, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(124, 58, 237, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(45, 45, 68, 0.5)'
+                            },
+                            angleLines: {
+                                color: 'rgba(45, 45, 68, 0.5)'
+                            },
+                            pointLabels: {
+                                color: '#a0a0b0',
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            ticks: {
+                                color: '#a0a0b0',
+                                backdropColor: 'transparent'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderSleepCards() {
+            const container = document.getElementById('sleepCards');
+
+            // Sort by date descending (most recent first)
+            const sortedData = [...sleepData].sort((a, b) => new Date(b.day) - new Date(a.day));
+
+            container.innerHTML = sortedData.map(data => {
+                const date = new Date(data.day);
+                const formattedDate = date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                const scoreClass = getScoreClass(data.score);
+
+                return `
+                    <div class="sleep-card">
+                        <div class="sleep-card-header">
+                            <span class="sleep-date">${formattedDate}</span>
+                            <span class="sleep-score ${scoreClass}">${data.score}</span>
+                        </div>
+                        <div class="contributors-grid">
+                            <div class="contributor">
+                                <span class="contributor-label">Deep Sleep</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill deep" style="width: ${data.contributors.deep_sleep}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.deep_sleep}%</span>
+                            </div>
+                            <div class="contributor">
+                                <span class="contributor-label">Efficiency</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill efficiency" style="width: ${data.contributors.efficiency}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.efficiency}%</span>
+                            </div>
+                            <div class="contributor">
+                                <span class="contributor-label">Latency</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill latency" style="width: ${data.contributors.latency}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.latency}%</span>
+                            </div>
+                            <div class="contributor">
+                                <span class="contributor-label">REM Sleep</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill rem" style="width: ${data.contributors.rem_sleep}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.rem_sleep}%</span>
+                            </div>
+                            <div class="contributor">
+                                <span class="contributor-label">Restfulness</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill restfulness" style="width: ${data.contributors.restfulness}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.restfulness}%</span>
+                            </div>
+                            <div class="contributor">
+                                <span class="contributor-label">Timing</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill timing" style="width: ${data.contributors.timing}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.timing}%</span>
+                            </div>
+                            <div class="contributor">
+                                <span class="contributor-label">Total Sleep</span>
+                                <div class="contributor-bar">
+                                    <div class="contributor-fill total" style="width: ${data.contributors.total_sleep}%"></div>
+                                </div>
+                                <span class="contributor-value">${data.contributors.total_sleep}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Initialize the app
+        init();
+    </script>
+</body>
+</html>
