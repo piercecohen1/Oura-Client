@@ -1,4 +1,5 @@
 oura.env
+oura_client
 
 # Binaries for programs and plugins
 *.exe

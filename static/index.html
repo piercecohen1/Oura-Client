@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oura Dashboard - API v2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --bg-card-hover: #1e2a4a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent-primary: #7c3aed;
+            --accent-secondary: #a78bfa;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-orange: #f59e0b;
+            --accent-pink: #ec4899;
+            --accent-cyan: #06b6d4;
+            --accent-red: #ef4444;
+            --border-color: #2d2d44;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .api-badge {
+            display: inline-block;
+            background: var(--accent-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Date Picker Section */
+        .date-picker-section {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .date-picker-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .date-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .date-input-group label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .date-input-group input {
+            padding: 0.6rem 0.9rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            min-width: 160px;
+        }
+
+        .date-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
+
+        .quick-ranges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .quick-range-btn {
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .quick-range-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .quick-range-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .fetch-btn {
+            padding: 0.6rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .fetch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+
+        .fetch-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .tab-icon {
+            font-size: 1.1rem;
+        }
+
+        /* Stats Overview */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-value.excellent { color: var(--accent-green); }
+        .stat-value.good { color: var(--accent-blue); }
+        .stat-value.fair { color: var(--accent-orange); }
+        .stat-value.poor { color: var(--accent-pink); }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        /* Charts Section */
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .charts-section {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        /* Data Cards Section */
+        .data-section {
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .data-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .data-card {
+            background: var(--bg-card);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .data-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-primary);
+            box-shadow: var(--shadow);
+        }
+
+        .data-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-date {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .data-score {
+            font-size: 1.25rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.4rem;
+        }
+
+        .data-score.excellent { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .data-score.good { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .data-score.fair { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .data-score.poor { background: rgba(236, 72, 153, 0.2); color: var(--accent-pink); }
+
+        .contributors-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.6rem;
+        }
+
+        .contributor {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .contributor-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .contributor-bar {
+            height: 5px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .contributor-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .contributor-fill.purple { background: var(--accent-primary); }
+        .contributor-fill.green { background: var(--accent-green); }
+        .contributor-fill.cyan { background: var(--accent-cyan); }
+        .contributor-fill.pink { background: var(--accent-pink); }
+        .contributor-fill.orange { background: var(--accent-orange); }
+        .contributor-fill.blue { background: var(--accent-blue); }
+        .contributor-fill.secondary { background: var(--accent-secondary); }
+
+        .contributor-value {
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        /* Activity specific */
+        .activity-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .activity-stat {
+            text-align: center;
+            padding: 0.5rem;
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+        }
+
+        .activity-stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+
+        .activity-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Sleep period specific */
+        .sleep-period-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sleep-stage {
+            text-align: center;
+            padding: 0.5rem;
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+        }
+
+        .sleep-stage-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .sleep-stage-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        /* Heart rate stats */
+        .hr-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 0.75rem;
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+        }
+
+        .hr-stat {
+            text-align: center;
+        }
+
+        .hr-stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .hr-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(236, 72, 153, 0.1);
+            border: 1px solid var(--accent-pink);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--accent-pink);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        footer a {
+            color: var(--accent-secondary);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .date-picker-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .date-input-group input {
+                width: 100%;
+            }
+
+            .quick-ranges {
+                justify-content: center;
+            }
+
+            .tabs {
+                gap: 0.25rem;
+            }
+
+            .tab-btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .data-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .contributors-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="logo-icon">&#x1F319;</span>
+                <h1>Oura Dashboard <span class="api-badge">API v2</span></h1>
+            </div>
+            <p class="subtitle">Track sleep, activity, readiness & more</p>
+        </header>
+
+        <section class="date-picker-section">
+            <div class="date-picker-container">
+                <div class="date-input-group">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="date-input-group">
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate">
+                </div>
+                <div class="quick-ranges">
+                    <button class="quick-range-btn" data-days="7">7 Days</button>
+                    <button class="quick-range-btn active" data-days="30">30 Days</button>
+                    <button class="quick-range-btn" data-days="90">90 Days</button>
+                </div>
+                <button class="fetch-btn" id="fetchBtn">Load Data</button>
+            </div>
+        </section>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="sleep">
+                <span class="tab-icon">&#x1F634;</span> Sleep
+            </button>
+            <button class="tab-btn" data-tab="activity">
+                <span class="tab-icon">&#x1F3C3;</span> Activity
+            </button>
+            <button class="tab-btn" data-tab="readiness">
+                <span class="tab-icon">&#x26A1;</span> Readiness
+            </button>
+            <button class="tab-btn" data-tab="heartrate">
+                <span class="tab-icon">&#x2764;</span> Heart Rate
+            </button>
+        </div>
+
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading your Oura data...</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with Go & Chart.js | Oura API v2 | <a href="https://ouraring.com" target="_blank">Oura Ring</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // State
+        let dashboardData = null;
+        let currentTab = 'sleep';
+        let charts = {};
+
+        // DOM Elements
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const contentDiv = document.getElementById('content');
+        const quickRangeBtns = document.querySelectorAll('.quick-range-btn');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+
+        // Initialize
+        function init() {
+            setDefaultDates(30);
+            setupEventListeners();
+            fetchDashboardData();
+        }
+
+        function setDefaultDates(days) {
+            const today = new Date();
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - days);
+
+            startDateInput.value = formatDate(startDate);
+            endDateInput.value = formatDate(today);
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function setupEventListeners() {
+            fetchBtn.addEventListener('click', fetchDashboardData);
+
+            quickRangeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const days = parseInt(btn.dataset.days);
+                    setDefaultDates(days);
+                    quickRangeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    fetchDashboardData();
+                });
+            });
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentTab = btn.dataset.tab;
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    if (dashboardData) {
+                        renderCurrentTab();
+                    }
+                });
+            });
+
+            startDateInput.addEventListener('change', () => {
+                quickRangeBtns.forEach(b => b.classList.remove('active'));
+            });
+            endDateInput.addEventListener('change', () => {
+                quickRangeBtns.forEach(b => b.classList.remove('active'));
+            });
+        }
+
+        async function fetchDashboardData() {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+
+            if (!startDate || !endDate) {
+                showError('Please select both start and end dates');
+                return;
+            }
+
+            showLoading();
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`/api/dashboard?start_date=${startDate}&end_date=${endDate}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to fetch data');
+                }
+
+                dashboardData = result.data;
+                renderCurrentTab();
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = 'Load Data';
+            }
+        }
+
+        function showLoading() {
+            contentDiv.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading your Oura data...</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            contentDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>Error</h3>
+                    <p>${escapeHtml(message)}</p>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getScoreClass(score) {
+            if (score >= 85) return 'excellent';
+            if (score >= 70) return 'good';
+            if (score >= 50) return 'fair';
+            return 'poor';
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function formatShortDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function formatFullDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        function renderCurrentTab() {
+            switch (currentTab) {
+                case 'sleep':
+                    renderSleepTab();
+                    break;
+                case 'activity':
+                    renderActivityTab();
+                    break;
+                case 'readiness':
+                    renderReadinessTab();
+                    break;
+                case 'heartrate':
+                    renderHeartRateTab();
+                    break;
+            }
+        }
+
+        // ============================================
+        // SLEEP TAB
+        // ============================================
+        function renderSleepTab() {
+            const sleep = dashboardData.sleep || [];
+            const periods = dashboardData.sleep_periods || [];
+
+            if (sleep.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#x1F634;</div>
+                        <h3>No Sleep Data Found</h3>
+                        <p>Try selecting a different date range</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const scores = sleep.map(d => d.score).filter(s => s > 0);
+            const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const maxScore = scores.length ? Math.max(...scores) : 0;
+            const minScore = scores.length ? Math.min(...scores) : 0;
+
+            // Average sleep duration from periods
+            const durations = periods.map(p => p.total_sleep_duration).filter(d => d > 0);
+            const avgDuration = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+
+            contentDiv.innerHTML = `
+                <section class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(avgScore)}">${avgScore}</div>
+                        <div class="stat-label">Avg Sleep Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value excellent">${maxScore}</div>
+                        <div class="stat-label">Best Night</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(minScore)}">${minScore}</div>
+                        <div class="stat-label">Lowest Night</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value good">${avgDuration ? formatDuration(avgDuration) : 'N/A'}</div>
+                        <div class="stat-label">Avg Sleep Time</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value good">${sleep.length}</div>
+                        <div class="stat-label">Days Tracked</div>
+                    </div>
+                </section>
+
+                <section class="charts-section">
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4C8; Sleep Score Trend</h3>
+                        <div class="chart-container">
+                            <canvas id="sleepScoreChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4CA; Avg Contributors</h3>
+                        <div class="chart-container">
+                            <canvas id="sleepContributorsChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="data-section">
+                    <h3 class="section-title">&#x1F4C5; Sleep Details</h3>
+                    <div class="data-cards" id="sleepCards"></div>
+                </section>
+            `;
+
+            renderSleepScoreChart(sleep);
+            renderSleepContributorsChart(sleep);
+            renderSleepCards(sleep, periods);
+        }
+
+        function renderSleepScoreChart(data) {
+            const ctx = document.getElementById('sleepScoreChart').getContext('2d');
+            const sorted = [...data].sort((a, b) => new Date(a.day) - new Date(b.day));
+
+            if (charts.sleepScore) charts.sleepScore.destroy();
+
+            charts.sleepScore = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sorted.map(d => formatShortDate(d.day)),
+                    datasets: [{
+                        label: 'Sleep Score',
+                        data: sorted.map(d => d.score),
+                        borderColor: 'rgba(124, 58, 237, 1)',
+                        backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: getChartOptions('Sleep Score', 0, 100)
+            });
+        }
+
+        function renderSleepContributorsChart(data) {
+            const ctx = document.getElementById('sleepContributorsChart').getContext('2d');
+            const validData = data.filter(d => d.contributors);
+
+            const avg = {
+                deep_sleep: Math.round(validData.reduce((a, d) => a + (d.contributors.deep_sleep || 0), 0) / validData.length) || 0,
+                efficiency: Math.round(validData.reduce((a, d) => a + (d.contributors.efficiency || 0), 0) / validData.length) || 0,
+                latency: Math.round(validData.reduce((a, d) => a + (d.contributors.latency || 0), 0) / validData.length) || 0,
+                rem_sleep: Math.round(validData.reduce((a, d) => a + (d.contributors.rem_sleep || 0), 0) / validData.length) || 0,
+                restfulness: Math.round(validData.reduce((a, d) => a + (d.contributors.restfulness || 0), 0) / validData.length) || 0,
+                timing: Math.round(validData.reduce((a, d) => a + (d.contributors.timing || 0), 0) / validData.length) || 0,
+                total_sleep: Math.round(validData.reduce((a, d) => a + (d.contributors.total_sleep || 0), 0) / validData.length) || 0
+            };
+
+            if (charts.sleepContributors) charts.sleepContributors.destroy();
+
+            charts.sleepContributors = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Deep', 'Efficiency', 'Latency', 'REM', 'Restful', 'Timing', 'Total'],
+                    datasets: [{
+                        label: 'Average',
+                        data: [avg.deep_sleep, avg.efficiency, avg.latency, avg.rem_sleep, avg.restfulness, avg.timing, avg.total_sleep],
+                        backgroundColor: 'rgba(124, 58, 237, 0.2)',
+                        borderColor: 'rgba(124, 58, 237, 1)',
+                        pointBackgroundColor: 'rgba(124, 58, 237, 1)'
+                    }]
+                },
+                options: getRadarOptions()
+            });
+        }
+
+        function renderSleepCards(sleep, periods) {
+            const container = document.getElementById('sleepCards');
+            const sorted = [...sleep].sort((a, b) => new Date(b.day) - new Date(a.day));
+
+            const periodsByDay = {};
+            periods.forEach(p => {
+                if (!periodsByDay[p.day]) periodsByDay[p.day] = [];
+                periodsByDay[p.day].push(p);
+            });
+
+            container.innerHTML = sorted.map(data => {
+                const period = periodsByDay[data.day]?.[0];
+                const scoreClass = getScoreClass(data.score);
+
+                return `
+                    <div class="data-card">
+                        <div class="data-card-header">
+                            <span class="data-date">${formatFullDate(data.day)}</span>
+                            <span class="data-score ${scoreClass}">${data.score}</span>
+                        </div>
+                        ${period ? `
+                        <div class="sleep-period-stats">
+                            <div class="sleep-stage">
+                                <div class="sleep-stage-value" style="color: var(--accent-primary)">${formatDuration(period.deep_sleep_duration || 0)}</div>
+                                <div class="sleep-stage-label">Deep</div>
+                            </div>
+                            <div class="sleep-stage">
+                                <div class="sleep-stage-value" style="color: var(--accent-cyan)">${formatDuration(period.light_sleep_duration || 0)}</div>
+                                <div class="sleep-stage-label">Light</div>
+                            </div>
+                            <div class="sleep-stage">
+                                <div class="sleep-stage-value" style="color: var(--accent-pink)">${formatDuration(period.rem_sleep_duration || 0)}</div>
+                                <div class="sleep-stage-label">REM</div>
+                            </div>
+                        </div>
+                        ` : ''}
+                        <div class="contributors-grid">
+                            ${renderContributor('Deep Sleep', data.contributors?.deep_sleep, 'purple')}
+                            ${renderContributor('Efficiency', data.contributors?.efficiency, 'green')}
+                            ${renderContributor('Latency', data.contributors?.latency, 'cyan')}
+                            ${renderContributor('REM Sleep', data.contributors?.rem_sleep, 'pink')}
+                            ${renderContributor('Restfulness', data.contributors?.restfulness, 'orange')}
+                            ${renderContributor('Timing', data.contributors?.timing, 'blue')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderContributor(label, value, color) {
+            const val = value || 0;
+            return `
+                <div class="contributor">
+                    <span class="contributor-label">${label}</span>
+                    <div class="contributor-bar">
+                        <div class="contributor-fill ${color}" style="width: ${val}%"></div>
+                    </div>
+                    <span class="contributor-value">${val}%</span>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // ACTIVITY TAB
+        // ============================================
+        function renderActivityTab() {
+            const activity = dashboardData.activity || [];
+
+            if (activity.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#x1F3C3;</div>
+                        <h3>No Activity Data Found</h3>
+                        <p>Try selecting a different date range</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const scores = activity.map(d => d.score).filter(s => s > 0);
+            const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const totalSteps = activity.reduce((a, d) => a + (d.steps || 0), 0);
+            const avgSteps = Math.round(totalSteps / activity.length);
+            const totalCalories = activity.reduce((a, d) => a + (d.active_calories || 0), 0);
+
+            contentDiv.innerHTML = `
+                <section class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(avgScore)}">${avgScore}</div>
+                        <div class="stat-label">Avg Activity Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value good">${avgSteps.toLocaleString()}</div>
+                        <div class="stat-label">Avg Daily Steps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value excellent">${totalSteps.toLocaleString()}</div>
+                        <div class="stat-label">Total Steps</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value fair">${totalCalories.toLocaleString()}</div>
+                        <div class="stat-label">Active Calories</div>
+                    </div>
+                </section>
+
+                <section class="charts-section">
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4C8; Activity Score & Steps</h3>
+                        <div class="chart-container">
+                            <canvas id="activityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4CA; Avg Contributors</h3>
+                        <div class="chart-container">
+                            <canvas id="activityContributorsChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="data-section">
+                    <h3 class="section-title">&#x1F4C5; Activity Details</h3>
+                    <div class="data-cards" id="activityCards"></div>
+                </section>
+            `;
+
+            renderActivityChart(activity);
+            renderActivityContributorsChart(activity);
+            renderActivityCards(activity);
+        }
+
+        function renderActivityChart(data) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const sorted = [...data].sort((a, b) => new Date(a.day) - new Date(b.day));
+
+            if (charts.activity) charts.activity.destroy();
+
+            charts.activity = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(d => formatShortDate(d.day)),
+                    datasets: [{
+                        label: 'Steps',
+                        data: sorted.map(d => d.steps),
+                        backgroundColor: 'rgba(6, 182, 212, 0.6)',
+                        borderColor: 'rgba(6, 182, 212, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y1'
+                    }, {
+                        label: 'Score',
+                        data: sorted.map(d => d.score),
+                        type: 'line',
+                        borderColor: 'rgba(124, 58, 237, 1)',
+                        backgroundColor: 'transparent',
+                        tension: 0.4,
+                        pointRadius: 3,
+                        yAxisID: 'y'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: '#a0a0b0' } } },
+                    scales: {
+                        y: { min: 0, max: 100, position: 'left', grid: { color: 'rgba(45, 45, 68, 0.5)' }, ticks: { color: '#a0a0b0' } },
+                        y1: { position: 'right', grid: { display: false }, ticks: { color: '#a0a0b0' } },
+                        x: { grid: { color: 'rgba(45, 45, 68, 0.5)' }, ticks: { color: '#a0a0b0', maxRotation: 45 } }
+                    }
+                }
+            });
+        }
+
+        function renderActivityContributorsChart(data) {
+            const ctx = document.getElementById('activityContributorsChart').getContext('2d');
+            const validData = data.filter(d => d.contributors);
+
+            const avg = {
+                meet_daily_targets: Math.round(validData.reduce((a, d) => a + (d.contributors.meet_daily_targets || 0), 0) / validData.length) || 0,
+                move_every_hour: Math.round(validData.reduce((a, d) => a + (d.contributors.move_every_hour || 0), 0) / validData.length) || 0,
+                recovery_time: Math.round(validData.reduce((a, d) => a + (d.contributors.recovery_time || 0), 0) / validData.length) || 0,
+                stay_active: Math.round(validData.reduce((a, d) => a + (d.contributors.stay_active || 0), 0) / validData.length) || 0,
+                training_frequency: Math.round(validData.reduce((a, d) => a + (d.contributors.training_frequency || 0), 0) / validData.length) || 0,
+                training_volume: Math.round(validData.reduce((a, d) => a + (d.contributors.training_volume || 0), 0) / validData.length) || 0
+            };
+
+            if (charts.activityContributors) charts.activityContributors.destroy();
+
+            charts.activityContributors = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Targets', 'Move/Hr', 'Recovery', 'Active', 'Freq', 'Volume'],
+                    datasets: [{
+                        label: 'Average',
+                        data: [avg.meet_daily_targets, avg.move_every_hour, avg.recovery_time, avg.stay_active, avg.training_frequency, avg.training_volume],
+                        backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                        borderColor: 'rgba(6, 182, 212, 1)',
+                        pointBackgroundColor: 'rgba(6, 182, 212, 1)'
+                    }]
+                },
+                options: getRadarOptions()
+            });
+        }
+
+        function renderActivityCards(data) {
+            const container = document.getElementById('activityCards');
+            const sorted = [...data].sort((a, b) => new Date(b.day) - new Date(a.day));
+
+            container.innerHTML = sorted.map(d => {
+                const scoreClass = getScoreClass(d.score);
+                return `
+                    <div class="data-card">
+                        <div class="data-card-header">
+                            <span class="data-date">${formatFullDate(d.day)}</span>
+                            <span class="data-score ${scoreClass}">${d.score}</span>
+                        </div>
+                        <div class="activity-stats">
+                            <div class="activity-stat">
+                                <div class="activity-stat-value">${(d.steps || 0).toLocaleString()}</div>
+                                <div class="activity-stat-label">Steps</div>
+                            </div>
+                            <div class="activity-stat">
+                                <div class="activity-stat-value" style="color: var(--accent-orange)">${d.active_calories || 0}</div>
+                                <div class="activity-stat-label">Active Cal</div>
+                            </div>
+                            <div class="activity-stat">
+                                <div class="activity-stat-value" style="color: var(--accent-green)">${formatDuration(d.high_activity_time || 0)}</div>
+                                <div class="activity-stat-label">High Activity</div>
+                            </div>
+                            <div class="activity-stat">
+                                <div class="activity-stat-value" style="color: var(--accent-blue)">${formatDuration(d.medium_activity_time || 0)}</div>
+                                <div class="activity-stat-label">Medium Activity</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================
+        // READINESS TAB
+        // ============================================
+        function renderReadinessTab() {
+            const readiness = dashboardData.readiness || [];
+
+            if (readiness.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#x26A1;</div>
+                        <h3>No Readiness Data Found</h3>
+                        <p>Try selecting a different date range</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const scores = readiness.map(d => d.score).filter(s => s > 0);
+            const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const maxScore = scores.length ? Math.max(...scores) : 0;
+            const minScore = scores.length ? Math.min(...scores) : 0;
+
+            contentDiv.innerHTML = `
+                <section class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(avgScore)}">${avgScore}</div>
+                        <div class="stat-label">Avg Readiness</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value excellent">${maxScore}</div>
+                        <div class="stat-label">Peak Readiness</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value ${getScoreClass(minScore)}">${minScore}</div>
+                        <div class="stat-label">Lowest Readiness</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value good">${readiness.length}</div>
+                        <div class="stat-label">Days Tracked</div>
+                    </div>
+                </section>
+
+                <section class="charts-section">
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4C8; Readiness Score Trend</h3>
+                        <div class="chart-container">
+                            <canvas id="readinessChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x1F4CA; Avg Contributors</h3>
+                        <div class="chart-container">
+                            <canvas id="readinessContributorsChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="data-section">
+                    <h3 class="section-title">&#x1F4C5; Readiness Details</h3>
+                    <div class="data-cards" id="readinessCards"></div>
+                </section>
+            `;
+
+            renderReadinessChart(readiness);
+            renderReadinessContributorsChart(readiness);
+            renderReadinessCards(readiness);
+        }
+
+        function renderReadinessChart(data) {
+            const ctx = document.getElementById('readinessChart').getContext('2d');
+            const sorted = [...data].sort((a, b) => new Date(a.day) - new Date(b.day));
+
+            if (charts.readiness) charts.readiness.destroy();
+
+            charts.readiness = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sorted.map(d => formatShortDate(d.day)),
+                    datasets: [{
+                        label: 'Readiness Score',
+                        data: sorted.map(d => d.score),
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4
+                    }]
+                },
+                options: getChartOptions('Readiness', 0, 100)
+            });
+        }
+
+        function renderReadinessContributorsChart(data) {
+            const ctx = document.getElementById('readinessContributorsChart').getContext('2d');
+            const validData = data.filter(d => d.contributors);
+
+            const avg = {
+                activity_balance: Math.round(validData.reduce((a, d) => a + (d.contributors.activity_balance || 0), 0) / validData.length) || 0,
+                body_temperature: Math.round(validData.reduce((a, d) => a + (d.contributors.body_temperature || 0), 0) / validData.length) || 0,
+                hrv_balance: Math.round(validData.reduce((a, d) => a + (d.contributors.hrv_balance || 0), 0) / validData.length) || 0,
+                previous_day_activity: Math.round(validData.reduce((a, d) => a + (d.contributors.previous_day_activity || 0), 0) / validData.length) || 0,
+                previous_night: Math.round(validData.reduce((a, d) => a + (d.contributors.previous_night || 0), 0) / validData.length) || 0,
+                recovery_index: Math.round(validData.reduce((a, d) => a + (d.contributors.recovery_index || 0), 0) / validData.length) || 0,
+                resting_heart_rate: Math.round(validData.reduce((a, d) => a + (d.contributors.resting_heart_rate || 0), 0) / validData.length) || 0,
+                sleep_balance: Math.round(validData.reduce((a, d) => a + (d.contributors.sleep_balance || 0), 0) / validData.length) || 0
+            };
+
+            if (charts.readinessContributors) charts.readinessContributors.destroy();
+
+            charts.readinessContributors = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Activity', 'Temp', 'HRV', 'Prev Act', 'Prev Night', 'Recovery', 'RHR', 'Sleep'],
+                    datasets: [{
+                        label: 'Average',
+                        data: [avg.activity_balance, avg.body_temperature, avg.hrv_balance, avg.previous_day_activity, avg.previous_night, avg.recovery_index, avg.resting_heart_rate, avg.sleep_balance],
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        pointBackgroundColor: 'rgba(16, 185, 129, 1)'
+                    }]
+                },
+                options: getRadarOptions()
+            });
+        }
+
+        function renderReadinessCards(data) {
+            const container = document.getElementById('readinessCards');
+            const sorted = [...data].sort((a, b) => new Date(b.day) - new Date(a.day));
+
+            container.innerHTML = sorted.map(d => {
+                const scoreClass = getScoreClass(d.score);
+                return `
+                    <div class="data-card">
+                        <div class="data-card-header">
+                            <span class="data-date">${formatFullDate(d.day)}</span>
+                            <span class="data-score ${scoreClass}">${d.score}</span>
+                        </div>
+                        <div class="contributors-grid">
+                            ${renderContributor('Activity Balance', d.contributors?.activity_balance, 'cyan')}
+                            ${renderContributor('HRV Balance', d.contributors?.hrv_balance, 'purple')}
+                            ${renderContributor('Previous Night', d.contributors?.previous_night, 'blue')}
+                            ${renderContributor('Recovery Index', d.contributors?.recovery_index, 'green')}
+                            ${renderContributor('Resting HR', d.contributors?.resting_heart_rate, 'pink')}
+                            ${renderContributor('Sleep Balance', d.contributors?.sleep_balance, 'orange')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================
+        // HEART RATE TAB
+        // ============================================
+        function renderHeartRateTab() {
+            const heartRate = dashboardData.heart_rate || [];
+
+            if (heartRate.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#x2764;</div>
+                        <h3>No Heart Rate Data Found</h3>
+                        <p>Try selecting a different date range</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const bpms = heartRate.map(d => d.bpm).filter(b => b > 0);
+            const avgBpm = bpms.length ? Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length) : 0;
+            const maxBpm = bpms.length ? Math.max(...bpms) : 0;
+            const minBpm = bpms.length ? Math.min(...bpms) : 0;
+
+            contentDiv.innerHTML = `
+                <section class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-value good">${avgBpm}</div>
+                        <div class="stat-label">Avg Heart Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value fair">${maxBpm}</div>
+                        <div class="stat-label">Max Heart Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value excellent">${minBpm}</div>
+                        <div class="stat-label">Min Heart Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value good">${heartRate.length}</div>
+                        <div class="stat-label">Data Points</div>
+                    </div>
+                </section>
+
+                <section class="charts-section" style="grid-template-columns: 1fr">
+                    <div class="chart-card">
+                        <h3 class="chart-title">&#x2764; Heart Rate Over Time</h3>
+                        <div class="chart-container" style="height: 350px">
+                            <canvas id="heartRateChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="data-section">
+                    <h3 class="section-title">&#x1F4CA; Heart Rate Distribution</h3>
+                    <div class="hr-stats">
+                        <div class="hr-stat">
+                            <div class="hr-stat-value" style="color: var(--accent-green)">${minBpm} bpm</div>
+                            <div class="hr-stat-label">Minimum</div>
+                        </div>
+                        <div class="hr-stat">
+                            <div class="hr-stat-value" style="color: var(--accent-blue)">${avgBpm} bpm</div>
+                            <div class="hr-stat-label">Average</div>
+                        </div>
+                        <div class="hr-stat">
+                            <div class="hr-stat-value" style="color: var(--accent-pink)">${maxBpm} bpm</div>
+                            <div class="hr-stat-label">Maximum</div>
+                        </div>
+                    </div>
+                </section>
+            `;
+
+            renderHeartRateChart(heartRate);
+        }
+
+        function renderHeartRateChart(data) {
+            const ctx = document.getElementById('heartRateChart').getContext('2d');
+
+            // Sample data if too many points
+            let displayData = data;
+            if (data.length > 500) {
+                const step = Math.ceil(data.length / 500);
+                displayData = data.filter((_, i) => i % step === 0);
+            }
+
+            const sorted = [...displayData].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            if (charts.heartRate) charts.heartRate.destroy();
+
+            charts.heartRate = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sorted.map(d => {
+                        const date = new Date(d.timestamp);
+                        return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    }),
+                    datasets: [{
+                        label: 'Heart Rate (bpm)',
+                        data: sorted.map(d => d.bpm),
+                        borderColor: 'rgba(236, 72, 153, 1)',
+                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 0,
+                        borderWidth: 1.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(45, 45, 68, 0.5)' }, ticks: { color: '#a0a0b0' } },
+                        x: { grid: { color: 'rgba(45, 45, 68, 0.5)' }, ticks: { color: '#a0a0b0', maxRotation: 45, maxTicksLimit: 12 } }
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // CHART HELPERS
+        // ============================================
+        function getChartOptions(label, min, max) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { min, max, grid: { color: 'rgba(45, 45, 68, 0.5)' }, ticks: { color: '#a0a0b0' } },
+                    x: { grid: { color: 'rgba(45, 45, 68, 0.5)' }, ticks: { color: '#a0a0b0', maxRotation: 45 } }
+                }
+            };
+        }
+
+        function getRadarOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(45, 45, 68, 0.5)' },
+                        angleLines: { color: 'rgba(45, 45, 68, 0.5)' },
+                        pointLabels: { color: '#a0a0b0', font: { size: 9 } },
+                        ticks: { color: '#a0a0b0', backdropColor: 'transparent', stepSize: 25 }
+                    }
+                }
+            };
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
